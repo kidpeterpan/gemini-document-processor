@@ -32,7 +32,7 @@ A powerful document processing tool that uses Google's Gemini AI to generate hig
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/gemini-document-processor.git
+   git clone https://github.com/kidpeterpan/gemini-document-processor.git
    cd gemini-document-processor
    ```
 
