@@ -1,0 +1,14 @@
+# Core dependencies
+Flask==2.3.3
+PyMuPDF  # For PDF processing (fitz)
+ebooklib==0.18.0  # For EPUB processing
+beautifulsoup4==4.12.2  # For parsing HTML content in EPUBs
+html2text==2020.1.16  # For converting HTML to markdown text
+requests==2.31.0  # For API calls to Gemini
+pathlib==1.0.1  # For path manipulations
+pypdf==5.4.0
+google-generativeai
+
+# Optional dependencies (comment out if not needed)
+# PIL or Pillow might be needed for more advanced image processing
+Pillow
