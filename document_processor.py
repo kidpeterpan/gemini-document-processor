@@ -63,25 +63,22 @@ class GeminiDocumentProcessor:
         self.request_timeout = request_timeout
         self.failed_chunks = []
         self.progress_callback = None  # Added progress callback
-
-        # Initialize Gemini API
-        self._initialize_api()
+        # Do NOT initialize Gemini API here
+        self.model = None
 
     def _initialize_api(self):
         """Initialize the Gemini API client."""
+        if self.model is not None:
+            return  # Already initialized
         try:
             if self.api_key:
                 logger.info("Using provided API key")
                 genai.configure(api_key=self.api_key)
-
-            # Get the model
             self.model = genai.GenerativeModel(self.model_name)
-
             # Test the API connection
             response = self.model.generate_content("Hello, this is a test.")
             if response:
                 logger.info(f"Successfully connected to Gemini API using model {self.model_name}")
-
         except Exception as e:
             logger.error(f"Error initializing Gemini API: {str(e)}")
             raise RuntimeError(f"Failed to initialize Gemini API: {str(e)}")
@@ -255,7 +252,6 @@ class GeminiDocumentProcessor:
                         self.model_name = original_model
                     if 'original_timeout' in locals() and self.request_timeout != original_timeout:
                         logger.info(f"  Resetting timeout back to {original_timeout}")
-                        self.request_timeout = original_timeout
 
             # After all retry attempts, if still not successful, add to failed chunks
             if not chunk_success:
@@ -421,6 +417,9 @@ class GeminiDocumentProcessor:
         """
         start_time = time.time()
         max_time = self.request_timeout  # seconds
+
+        # Ensure Gemini API is initialized before summarization
+        self._initialize_api()
 
         # Prepare the original Thai prompt
         page_or_chapter = "หน้า" if doc_type == 'pdf' else "บท"

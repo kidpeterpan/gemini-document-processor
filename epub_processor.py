@@ -40,13 +40,12 @@ class SimpleEpubProcessor:
                 epub_name_without_ext: Name of the EPUB file without extension
                 metadata: Dictionary of metadata extracted from the EPUB
         """
+        # Always set epub_name_without_ext early for error handling
+        epub_filename = os.path.basename(epub_path)
+        epub_name_without_ext = os.path.splitext(epub_filename)[0]
         try:
             if not os.path.exists(epub_path):
                 raise FileNotFoundError(f"EPUB file not found: {epub_path}")
-
-            # Get EPUB filename for use in the output
-            epub_filename = os.path.basename(epub_path)
-            epub_name_without_ext = os.path.splitext(epub_filename)[0]
 
             # Create image output directory if extracting images
             if self.extract_images and image_output_dir:

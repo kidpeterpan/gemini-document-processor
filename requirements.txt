@@ -12,3 +12,7 @@ google-generativeai
 # Optional dependencies (comment out if not needed)
 # PIL or Pillow might be needed for more advanced image processing
 Pillow
+
+# Testing dependencies
+pytest
+pytest-cov
