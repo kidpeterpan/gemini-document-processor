@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Job Status - Gemini Document Processor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { padding-top: 20px; }
+    .log-container {
+      background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: .25rem;
+      padding: 15px; height: 300px; overflow-y: auto; font-family: monospace; white-space: pre-wrap;
+    }
+    .log-line { margin-bottom: 3px; }
+    .badge-obsidian { background-color: #8d6fdb; color: white; }
+    .current-chunk-info { font-size: .9rem; color: #6c757d; margin-top: 5px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1 class="mb-4">Document Processing Status</h1>
+
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">Job <code>{{ job_id }}</code></h5>
+      <div>
+        <a href="/" class="btn btn-sm btn-outline-secondary">Back to Home</a>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="mb-3 d-flex justify-content-between">
+        <strong>Status:</strong>
+        <span id="status" class="badge bg-secondary">Loading...</span>
+      </div>
+
+      <div class="mb-3">
+        <strong>Progress:</strong>
+        <div class="progress">
+          <div id="progress" class="progress-bar" role="progressbar" style="width: 0%;">0%</div>
+        </div>
+        <div id="chunkInfo" class="current-chunk-info d-none">
+          Processing unit <span id="currentChunk">0</span> of <span id="totalChunks">0</span>
+          · <span id="failedCount">0</span> failed
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <strong>Current Task:</strong>
+        <div id="message">Initializing...</div>
+      </div>
+
+      <div class="mb-3">
+        <strong>Usage:</strong>
+        <span id="usage">—</span>
+        &nbsp;|&nbsp; <strong>Synthesis:</strong> <span id="synthesis">—</span>
+        &nbsp;|&nbsp; <strong>Coverage:</strong> <span id="coverage">—</span>
+      </div>
+
+      <div class="mb-3">
+        <strong>Log:</strong>
+        <div id="log" class="log-container"></div>
+      </div>
+
+      <div class="mb-3">
+        <button id="stopBtn" class="btn btn-sm btn-outline-danger d-none">Stop</button>
+        <button id="resumeBtn" class="btn btn-sm btn-outline-primary d-none">Resume</button>
+        <button id="retryBtn" class="btn btn-sm btn-outline-warning d-none">Retry Failed Units</button>
+      </div>
+
+      <div id="resultsContainer" class="mb-3 d-none">
+        <strong>Results:</strong>
+        <div id="results" class="list-group mt-2"></div>
+      </div>
+
+      <div id="errorContainer" class="alert alert-danger d-none" role="alert">
+        <strong>Error:</strong>
+        <div id="errorMessage"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  const jobId = '{{ job_id }}';
+  let pollTimer;
+
+  function setStatus(status) {
+    const el = document.getElementById('status');
+    el.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+    const colours = {
+      pending: 'bg-secondary', queued: 'bg-secondary', running: 'bg-primary',
+      stopping: 'bg-warning text-dark', stopped: 'bg-warning text-dark',
+      completed: 'bg-success', failed: 'bg-danger'
+    };
+    el.className = 'badge ' + (colours[status] || 'bg-secondary');
+  }
+
+  function render(data) {
+    setStatus(data.status);
+
+    const counts = data.unit_counts || {};
+    document.getElementById('progress').style.width = data.progress + '%';
+    document.getElementById('progress').textContent = data.progress + '%';
+
+    const chunkInfo = document.getElementById('chunkInfo');
+    if (counts.total) {
+      chunkInfo.classList.remove('d-none');
+      document.getElementById('currentChunk').textContent = counts.complete || 0;
+      document.getElementById('totalChunks').textContent = counts.total;
+      document.getElementById('failedCount').textContent = counts.failed || 0;
+    }
+
+    document.getElementById('message').textContent = data.message || '';
+    const usage = data.usage || {};
+    document.getElementById('usage').textContent =
+      (usage.calls || 0) + ' calls · ' +
+      ((usage.prompt_tokens || 0) + (usage.output_tokens || 0)) + ' tokens';
+    document.getElementById('synthesis').textContent = data.synthesis_status || '—';
+    document.getElementById('coverage').textContent = data.coverage_status || '—';
+
+    const log = document.getElementById('log');
+    log.innerHTML = '';
+    (data.log || []).forEach(entry => {
+      const line = document.createElement('div');
+      line.className = 'log-line' + (entry.includes('Failed') || entry.includes('❌') ? ' text-danger'
+        : entry.includes('⚠️') ? ' text-warning' : '');
+      line.textContent = entry;
+      log.appendChild(line);
+    });
+    log.scrollTop = log.scrollHeight;
+
+    document.getElementById('stopBtn').classList.toggle('d-none', data.status !== 'running');
+    document.getElementById('resumeBtn').classList.toggle('d-none', !['stopped', 'failed'].includes(data.status));
+    document.getElementById('retryBtn').classList.toggle('d-none', !(counts.failed > 0));
+
+    const resultsContainer = document.getElementById('resultsContainer');
+    const results = document.getElementById('results');
+    if ((data.result_files || []).length) {
+      resultsContainer.classList.remove('d-none');
+      results.innerHTML = '';
+      data.result_files.forEach(file => {
+        const item = document.createElement('div');
+        item.className = 'list-group-item d-flex justify-content-between align-items-center';
+        if (file.type === 'file') {
+          item.innerHTML = `<a href="/download/${file.path}">${file.name}</a>
+            <a class="btn btn-sm btn-outline-primary" href="/view/${file.path}" target="_blank">View</a>`;
+        } else if (file.type === 'obsidian') {
+          item.innerHTML = `<span>${file.name}</span><span class="badge badge-obsidian">Obsidian</span>`;
+        } else {
+          item.textContent = file.name + ' (directory)';
+        }
+        results.appendChild(item);
+      });
+    }
+
+    if (data.error) {
+      document.getElementById('errorContainer').classList.remove('d-none');
+      document.getElementById('errorMessage').textContent = data.error;
+    }
+  }
+
+  function poll() {
+    fetch('/api/job/' + jobId)
+      .then(r => { if (!r.ok) throw new Error('status fetch failed'); return r.json(); })
+      .then(data => {
+        render(data);
+        if (['completed', 'failed', 'stopped'].includes(data.status)) {
+          clearInterval(pollTimer);
+        }
+      })
+      .catch(error => { document.getElementById('message').textContent = 'Error: ' + error.message; });
+  }
+
+  function post(path, confirmText) {
+    if (confirmText && !confirm(confirmText)) return;
+    fetch(path, { method: 'POST' })
+      .then(r => r.json())
+      .then(() => { clearInterval(pollTimer); pollTimer = setInterval(poll, 3000); poll(); })
+      .catch(error => alert('Error: ' + error.message));
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('stopBtn').addEventListener('click', () => post('/jobs/' + jobId + '/stop', 'Stop this job?'));
+    document.getElementById('resumeBtn').addEventListener('click', () => post('/jobs/' + jobId + '/resume'));
+    document.getElementById('retryBtn').addEventListener('click', () => post('/jobs/' + jobId + '/retry_units'));
+    poll();
+    pollTimer = setInterval(poll, 3000);
+  });
+</script>
+</body>
+</html>

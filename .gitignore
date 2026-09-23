@@ -1,2 +1,31 @@
-__pycache__
-venv
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Runtime data (durable store, uploads, generated artifacts, exports, logs)
+runtime/
+uploads/
+results/
+*.log
+
+# Local, machine-specific settings. A safe template is tracked instead.
+settings.json
+
+# Spec Kit / agent tooling — kept local, not part of the application.
+.specify/
+specs/
+.opencode/
+.claude/

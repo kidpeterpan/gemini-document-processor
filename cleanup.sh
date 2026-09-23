@@ -1,43 +1,27 @@
 #!/bin/bash
-
-# Script to clean up results, uploads, and log files
+# Remove runtime data: durable store, uploads, generated artifacts, exports, logs.
 # Usage: ./cleanup.sh
+set -euo pipefail
 
-# Set the base directory - default to the current directory
-BASE_DIR="$(pwd)"
-
-# File paths
-RESULTS_DIR="$BASE_DIR/results"
-UPLOADS_DIR="$BASE_DIR/uploads"
+BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+RUNTIME_DIR="$BASE_DIR/runtime"
 
 echo "========================================"
 echo "Starting cleanup process..."
 echo "========================================"
 
-# Clean results directory
-if [ -d "$RESULTS_DIR" ]; then
-    echo "Cleaning results directory..."
-    rm -rf "$RESULTS_DIR"/*
-    echo "✓ Results directory emptied"
+if [ -d "$RUNTIME_DIR" ]; then
+  echo "Removing runtime directory ($RUNTIME_DIR)..."
+  rm -rf "$RUNTIME_DIR"
+  echo "✓ runtime/ removed (store, uploads, artifacts, exports, logs)"
 else
-    echo "! Results directory not found at $RESULTS_DIR"
+  echo "! runtime directory not found at $RUNTIME_DIR (nothing to do)"
 fi
 
-# Clean uploads directory
-if [ -d "$UPLOADS_DIR" ]; then
-    echo "Cleaning uploads directory..."
-    rm -rf "$UPLOADS_DIR"/*
-    echo "✓ Uploads directory emptied"
-else
-    echo "! Uploads directory not found at $UPLOADS_DIR"
-fi
-
-# Remove log files
-echo "Removing log files..."
+echo "Removing stray log files..."
 find "$BASE_DIR" -name "*.log" -type f -delete
 echo "✓ Log files removed"
 
-# Done
 echo "========================================"
 echo "Cleanup completed!"
 echo "========================================"

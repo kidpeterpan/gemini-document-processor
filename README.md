@@ -1,137 +1,134 @@
 # Gemini Document Processor
 
-A powerful document processing tool that uses Google's Gemini AI to generate high-quality Thai language summaries from PDF and EPUB files, with image extraction and Obsidian integration.
+A durable, resumable tool that turns PDF and EPUB books into detailed Thai
+summaries with Google's Gemini models, extracting images and exporting to an
+Obsidian vault.
 
-![Screenshot.png](Screenshot.png)
+## Why it is built this way
+
+- **Durable work.** A book is hours of sequential model calls. Job state and
+  every unit result are persisted in SQLite, so a crash or restart resumes
+  exactly where it stopped and never pays for the same content twice.
+- **Pure core, thin shell.** `booksum/` is framework-free and fully testable;
+  `web/` is a thin Flask shell. Templates are authored files and are never
+  written by the application.
+- **Measurable output quality.** Output is synthesised whole-book-first, then
+  detail-first. A coverage pass reports what might be missing, and an offline
+  evaluation harness gates prompt/model changes against a curated fact
+  checklist.
+
+The engineering principles are recorded in
+[`.specify/memory/constitution.md`](.specify/memory/constitution.md).
 
 ## Features
 
-### Core Functionality
-- **AI-Powered Summarization**: Uses Google's latest Gemini models (gemini-2.0-flash, gemini-2.5-flash-preview, gemini-1.5-pro)
-- **Multiple Document Formats**: Processes both PDF and EPUB files
-- **Thai-Focused Summaries**: Optimized for creating comprehensive Thai language summaries
-
-### Advanced Processing
-- **Smart Chunking**: Processes documents in manageable chunks for better AI performance
-- **Image Extraction**: Extracts and filters images from documents with size thresholds
-- **Robust Error Handling**: Includes intelligent retry mechanisms with model fallbacks
-- **Timeout Management**: Configurable timeouts for both API calls and chunk processing
-
-### User Experience
-- **Web Interface**: Clean, tabbed web application for document processing
-- **Real-time Progress Tracking**: Live updates during processing
-- **Job Status Monitoring**: Track failed chunks and retry problematic sections
-- **Parallel Processing**: Multi-threaded image extraction for improved performance
-
-### Obsidian Integration
-- **Direct Export**: Create markdown files directly in your Obsidian vault
-- **Metadata Support**: Includes YAML frontmatter with tags and other metadata
-- **Customizable Tags**: Define your own Obsidian tags for processed documents
+- AI summarization with configurable Gemini models and automatic fallback.
+- PDF (page-range chunks) and EPUB (chapter) processing.
+- **Whole-document synthesis**: overview, key ideas, and glossary in addition to
+  detailed section notes.
+- **Omission coverage report**: salient source facts missing from each section's
+  summary, with a coverage score.
+- Image extraction with size filtering; every embedded link is verified to exist
+  before it is written.
+- **Resumable jobs**: checkpointed per unit, with stop / resume / retry-failed.
+- Bounded concurrency so a burst of uploads cannot overwhelm the provider.
+- Obsidian export with YAML frontmatter (tags, author, cover, review).
+- Per-job isolated logs (no cross-job interleaving).
 
 ## Installation
 
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/kidpeterpan/gemini-document-processor.git
-   cd gemini-document-processor
-   ```
+```bash
+python3.11 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+pip install -e ".[dev]"        # lint + tests
+```
 
-2. Install the required dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. Get a Google Gemini API key from [Google AI Studio](https://aistudio.google.com/)
+Get a Google Gemini API key from <https://aistudio.google.com/>.
 
 ## Usage
 
-### Starting the Web Interface
-
-Run the web server:
-
 ```bash
-python document_gui.py
+export GEMINI_API_KEY="..."     # used for real runs and for resuming after restart
+python document_gui.py          # or: python -m web.app
 ```
 
-Then open your web browser and navigate to: http://127.0.0.1:8081/
+Open <http://127.0.0.1:8081/>.
 
-### Web Interface Features
+The API key is used for the run only and is **never written to disk**. On
+restart, jobs resume using `GEMINI_API_KEY`; if it is unavailable, the job stays
+`stopped` with an actionable message.
 
-The interface is organized into three tabs:
+### Interface
 
-1. **Basic Settings**:
-   - Upload PDF or EPUB files
-   - Select Gemini model:
-     - gemini-2.0-flash (Faster)
-     - gemini-2.5-flash-preview (More accurate)
-     - gemini-1.5-pro (Backup option)
-   - Adjust chunk size (pages per processing unit)
-   - Enter your Gemini API key
-   - Toggle image extraction
+- **Basic**: file, model, chunk size, API key, extract images.
+- **Obsidian**: enable export, vault path (validated), tags, author, cover, review.
+- **Advanced**: retries, request timeout, max concurrent calls, image thresholds
+  and format, synthesis and coverage toggles.
+- **Job page**: live progress, unit counts, token/call usage, synthesis and
+  coverage status, logs, and stop / resume / retry-failed controls.
 
-2. **Obsidian Integration**:
-   - Enable automatic export to Obsidian
-   - Verify and set Obsidian vault path
-   - Configure tags, author, cover URL, and review ratings
-   - Automatic path validation
+### Configuration
 
-3. **Advanced Settings**:
-   - Configure timeout settings:
-     - Chunk processing timeout (60-1800 seconds)
-     - API request timeout (30-300 seconds)
-   - Set retry attempts for API calls
-   - Configure image size thresholds
-   - Select image format (PNG/JPG)
-   - Adjust worker thread count (1-16)
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `GEMINI_API_KEY` | — | Credentials (never persisted) |
+| `BOOKSUM_MODEL` | `gemini-2.0-flash` | Default model |
+| `BOOKSUM_DATA_DIR` | `runtime` | Store, uploads, artifacts, exports, logs |
+| `BOOKSUM_CHUNK_SIZE` | `7` | Pages per PDF chunk |
+| `BOOKSUM_MAX_CONCURRENCY` | `4` | Global in-flight upstream calls |
+| `BOOKSUM_REQUEST_TIMEOUT` | `60` | Per-request read timeout (seconds) |
+| `BOOKSUM_COVERAGE_THRESHOLD` | `0.9` | Evaluation gate capture floor |
+| `BOOKSUM_HOST` / `BOOKSUM_PORT` | `127.0.0.1` / `8081` | Bind address |
+| `BOOKSUM_DEBUG` | unset | Enable Flask debug (opt-in only) |
 
-### Job Status and Monitoring
+Copy [`.settings.example.json`](.settings.example.json) to `settings.json` for a
+machine-specific vault path (ignored by git).
 
-- **Real-time Progress**: View detailed progress during processing
-- **Log Viewer**: See all processing events as they happen
-- **Failed Chunks**: Identify and retry problematic sections
-- **Result Management**: Download or view generated summaries
-- **Obsidian Export**: Track files exported to your Obsidian vault
+## How it works
 
-## How It Works
+1. **Extract** the document into units (page ranges or chapters) and write image
+   bytes to disk.
+2. **Map**: summarize each unit, consulting the content-addressed result cache
+   first. Results are persisted before the next unit starts.
+3. **Reduce**: synthesise a whole-document overview, key ideas, and glossary.
+4. **Audit**: report salient facts missing from each unit's summary.
+5. **Assemble** Markdown with version/model frontmatter and only resolvable
+   image links, then export to the vault if requested.
 
-1. **Document Loading**: The application loads PDF or EPUB files and extracts text content
-2. **Chunking**: Content is divided into manageable chunks (by page for PDFs, by chapter for EPUBs)
-3. **Image Extraction**: Images are extracted with size filtering and saved separately
-4. **AI Processing**: Each chunk is sent to Gemini API with timeout handling and retries
-5. **Error Recovery**: Failed chunks are tracked and can be retried with more robust settings
-6. **Summary Creation**: Results are compiled into a well-formatted Markdown document
-7. **Integration**: Summary and images are saved locally and (optionally) to Obsidian
+## Verification
 
-## Troubleshooting
+```bash
+ruff check . && ruff format --check .
+python -m pytest          # offline, with the coverage gate
+```
 
-### Common Issues
+Every check runs offline. Tests that require the network are marked `network`
+and deselected by default.
 
-- **API Errors**: Check your API key and internet connection
-- **Processing Timeouts**: Increase the chunk and API timeout values in Advanced Settings
-- **Failed Chunks**: Use the "Retry Failed Chunks" button on the job status page
-- **Obsidian Integration**: Ensure your Obsidian vault path is correct and contains a .obsidian folder
+### Output-quality evaluation
 
-### Error Logs
+```bash
+python -m booksum.eval.harness --dataset evaluation/dataset.jsonl --validate-dataset
+python -m booksum.eval.harness --dataset evaluation/dataset.jsonl --offline \
+    --report /tmp/report.json
+```
 
-For detailed error information, check the application logs in your terminal or command prompt.
+The report is validated against
+[`specs/002-summary-quality/contracts/eval-report.schema.json`](specs/002-summary-quality/contracts/eval-report.schema.json)
+and exits non-zero when the capture rate falls below the threshold.
 
-## Project Structure
+## Project layout
 
-- `document_gui.py` - Web interface and job management
-- `document_processor.py` - Core processing logic for documents
-- `epub_processor.py` - EPUB-specific processing functionality
-- `templates/` - HTML templates for web interface
-- `uploads/` - Temporary storage for uploaded files and processing results
+```
+booksum/     pure core: extraction, chunking, prompts, llm, store, service,
+             summarization, assembly, obsidian, eval
+web/         Flask shell: app.py, logging_channel.py, templates/
+specs/       Spec Kit artifacts (constitution, spec, plan, tasks per feature)
+tests/       unit/, contract/, integration/
+evaluation/  output-quality dataset and checklists
+document_gui.py   backward-compatible entry point
+```
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Credits
-
-This project uses the following technologies:
-- [Google Generative AI API](https://ai.google.dev/)
-- [Flask](https://flask.palletsprojects.com/)
-- [PyPDF](https://pypdf.readthedocs.io/en/latest/)
-- [ebooklib](https://github.com/aerkalov/ebooklib)
-- [Bootstrap](https://getbootstrap.com/) for the web interface
+MIT — see [LICENSE](LICENSE).

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gemini Document Processor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { padding-top: 20px; }
+    .card { margin-bottom: 20px; }
+    .form-group { margin-bottom: 15px; }
+    .obsidian-settings { background-color: #f5f5f5; border-radius: 8px; padding: 15px; margin-top: 15px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1 class="mb-4">Gemini Document Processor</h1>
+
+  <div class="card">
+    <div class="card-header">
+      <ul class="nav nav-tabs card-header-tabs" id="settingsTab" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#basic" type="button" role="tab">Basic Settings</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#obsidian" type="button" role="tab">Obsidian Integration</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#advanced" type="button" role="tab">Advanced Settings</button>
+        </li>
+      </ul>
+    </div>
+    <div class="card-body">
+      <form id="uploadForm" enctype="multipart/form-data">
+        <div class="tab-content">
+          <div class="tab-pane fade show active" id="basic" role="tabpanel">
+            <div class="form-group">
+              <label for="file">Select PDF or EPUB File:</label>
+              <input type="file" class="form-control" id="file" name="file" accept=".pdf,.epub" required>
+            </div>
+            <div class="form-group">
+              <label for="model_name">Gemini Model:</label>
+              <select class="form-select" id="model_name" name="model_name">
+                {% for model in models %}
+                <option value="{{ model }}" {% if model == default_model %}selected{% endif %}>{{ model }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="chunk_size">Pages per Chunk (PDF) / Content per Chapter (EPUB):</label>
+              <input type="number" class="form-control" id="chunk_size" name="chunk_size" value="{{ chunk_size }}" min="1" max="50">
+            </div>
+            <div class="form-group">
+              <label for="api_key">API Key:</label>
+              <input type="password" class="form-control" id="api_key" name="api_key" value="">
+              <div class="form-check mt-2">
+                <input class="form-check-input" type="checkbox" id="showApiKey">
+                <label class="form-check-label" for="showApiKey">Show API Key</label>
+              </div>
+              <small class="form-text text-muted">Used for this run only; never written to disk.</small>
+            </div>
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" id="extract_images" name="extract_images" checked>
+              <label class="form-check-label" for="extract_images">Extract Images</label>
+            </div>
+          </div>
+
+          <div class="tab-pane fade" id="obsidian" role="tabpanel">
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" id="use_obsidian" name="use_obsidian">
+              <label class="form-check-label" for="use_obsidian">Enable Obsidian Integration</label>
+            </div>
+            <div id="obsidianSettings" class="obsidian-settings d-none">
+              <div class="form-group">
+                <label for="obsidian_vault_path">Obsidian Vault Path:</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" id="obsidian_vault_path" name="obsidian_vault_path" value="{{ obsidian_dir or '' }}">
+                  <button class="btn btn-outline-secondary" type="button" id="checkObsidianPath">Check</button>
+                </div>
+                <div id="obsidianPathFeedback" class="form-text"></div>
+              </div>
+              <div class="form-group mt-3">
+                <label for="obsidian_tags">Tags (comma separated):</label>
+                <input type="text" class="form-control" id="obsidian_tags" name="obsidian_tags" value="book,main">
+              </div>
+              <div class="form-group mt-3">
+                <label for="obsidian_author">Author (optional):</label>
+                <input type="text" class="form-control" id="obsidian_author" name="obsidian_author" value="">
+              </div>
+              <div class="form-group mt-3">
+                <label for="obsidian_cover_url">Cover URL (optional):</label>
+                <input type="text" class="form-control" id="obsidian_cover_url" name="obsidian_cover_url" value="">
+              </div>
+              <div class="form-group mt-3">
+                <label for="obsidian_review">Review (optional):</label>
+                <input type="text" class="form-control" id="obsidian_review" name="obsidian_review" value="">
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-pane fade" id="advanced" role="tabpanel">
+            <div class="form-group">
+              <label for="max_retries">Max Retries:</label>
+              <input type="number" class="form-control" id="max_retries" name="max_retries" value="3" min="1" max="10">
+            </div>
+            <div class="form-group">
+              <label for="api_timeout">API Request Timeout (seconds):</label>
+              <input type="number" class="form-control" id="api_timeout" name="api_timeout" value="60" min="30" max="300">
+            </div>
+            <div class="form-group">
+              <label for="max_concurrency">Max Concurrent API Calls:</label>
+              <input type="number" class="form-control" id="max_concurrency" name="max_concurrency" value="4" min="1" max="16">
+            </div>
+            <div class="form-group">
+              <label for="min_img_width">Minimum Image Width:</label>
+              <input type="number" class="form-control" id="min_img_width" name="min_img_width" value="100" min="10" max="1000">
+            </div>
+            <div class="form-group">
+              <label for="min_img_height">Minimum Image Height:</label>
+              <input type="number" class="form-control" id="min_img_height" name="min_img_height" value="100" min="10" max="1000">
+            </div>
+            <div class="form-group">
+              <label for="img_format">Image Format:</label>
+              <select class="form-select" id="img_format" name="img_format">
+                <option value="png">PNG</option>
+                <option value="jpg">JPG</option>
+              </select>
+            </div>
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="checkbox" id="synthesis_enabled" name="synthesis_enabled" checked>
+              <label class="form-check-label" for="synthesis_enabled">Generate whole-document synthesis</label>
+            </div>
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="checkbox" id="coverage_enabled" name="coverage_enabled" checked>
+              <label class="form-check-label" for="coverage_enabled">Run omission coverage check</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <button type="submit" class="btn btn-primary" id="submitBtn">Process Document</button>
+          <div class="spinner-border text-primary d-none ms-2" id="spinner" role="status"></div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  document.getElementById('showApiKey').addEventListener('change', function () {
+    document.getElementById('api_key').type = this.checked ? 'text' : 'password';
+  });
+  document.getElementById('use_obsidian').addEventListener('change', function () {
+    document.getElementById('obsidianSettings').classList.toggle('d-none', !this.checked);
+  });
+  document.getElementById('checkObsidianPath').addEventListener('click', function () {
+    const path = document.getElementById('obsidian_vault_path').value;
+    const feedback = document.getElementById('obsidianPathFeedback');
+    feedback.textContent = 'Checking...';
+    feedback.className = 'form-text text-muted';
+    fetch('/obsidian_check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: path })
+    }).then(r => r.json()).then(data => {
+      feedback.textContent = (data.valid ? '✅ ' : '❌ ') + data.message;
+      feedback.className = 'form-text ' + (data.valid ? 'text-success' : 'text-danger');
+    }).catch(() => {
+      feedback.textContent = '❌ Error checking path';
+      feedback.className = 'form-text text-danger';
+    });
+  });
+  document.getElementById('uploadForm').addEventListener('submit', function (event) {
+    event.preventDefault();
+    const submitBtn = document.getElementById('submitBtn');
+    const spinner = document.getElementById('spinner');
+    submitBtn.disabled = true;
+    spinner.classList.remove('d-none');
+    fetch('/upload', { method: 'POST', body: new FormData(this) })
+      .then(r => r.json().then(body => ({ ok: r.ok, body })))
+      .then(({ ok, body }) => {
+        if (!ok) { throw new Error(body.error || 'upload failed'); }
+        window.location.href = body.redirect;
+      })
+      .catch(error => {
+        alert('Error: ' + error.message);
+        submitBtn.disabled = false;
+        spinner.classList.add('d-none');
+      });
+  });
+</script>
+</body>
+</html>

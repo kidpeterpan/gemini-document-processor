@@ -1,0 +1,77 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gemini-document-processor"
+version = "0.2.0"
+description = "Durable, resumable PDF/EPUB summarizer with Thai output and Obsidian export"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "Flask>=3.0",
+    "requests>=2.31",
+    "pypdf>=5.0",
+    "ebooklib>=0.18",
+    "beautifulsoup4>=4.12",
+    "html2text>=2020.1.16",
+    "Pillow>=10.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
+    "jsonschema>=4.0",
+]
+
+[tool.setuptools]
+packages = ["booksum", "booksum.eval", "web"]
+
+[tool.setuptools.package-data]
+web = ["templates/*.html"]
+
+# --------------------------------------------------------------------------- #
+# Lint / format
+# --------------------------------------------------------------------------- #
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["booksum", "web", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "W"]
+ignore = [
+    "E501",   # line length is enforced by the formatter, not by the linter
+    "B008",   # Flask/Dataclass default patterns are fine here
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["B011"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["booksum", "web"]
+
+# --------------------------------------------------------------------------- #
+# Tests
+# --------------------------------------------------------------------------- #
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not network' --cov=booksum --cov=web --cov-report=term-missing --cov-fail-under=80"
+markers = [
+    "network: requires external network access (deselected by default)",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["booksum", "web"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]
