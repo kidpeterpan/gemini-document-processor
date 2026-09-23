@@ -1,8 +1,9 @@
 """Evaluation harness.
 
-Drives the real pipeline (extraction -> per-unit summary -> coverage) over a
-dataset and emits a machine-readable report that CI can gate on
-(``specs/002-summary-quality/contracts/eval-report.schema.json``).
+Drives the real pipeline (extraction -> per-unit summary -> synthesis ->
+coverage) over a dataset and emits a machine-readable report that CI can gate
+on. The schema ships with the package at
+``booksum/eval/eval_report.schema.json``.
 
 ``--offline`` swaps in a deterministic echo client so the harness itself can be
 verified without network access (FR-009).

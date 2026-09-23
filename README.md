@@ -17,8 +17,9 @@ Obsidian vault.
   evaluation harness gates prompt/model changes against a curated fact
   checklist.
 
-The engineering principles are recorded in
-[`.specify/memory/constitution.md`](.specify/memory/constitution.md).
+The engineering principles are recorded in the project constitution
+(`.specify/memory/constitution.md`), which is kept locally with the Spec Kit
+workflow rather than committed.
 
 ## Features
 
@@ -113,21 +114,23 @@ python -m booksum.eval.harness --dataset evaluation/dataset.jsonl --offline \
     --report /tmp/report.json
 ```
 
-The report is validated against
-[`specs/002-summary-quality/contracts/eval-report.schema.json`](specs/002-summary-quality/contracts/eval-report.schema.json)
+The report is validated against the schema shipped with the package at
+[`booksum/eval/eval_report.schema.json`](booksum/eval/eval_report.schema.json)
 and exits non-zero when the capture rate falls below the threshold.
 
 ## Project layout
 
 ```
 booksum/     pure core: extraction, chunking, prompts, llm, store, service,
-             summarization, assembly, obsidian, eval
+             summarization, assembly, obsidian, eval (incl. report schema)
 web/         Flask shell: app.py, logging_channel.py, templates/
-specs/       Spec Kit artifacts (constitution, spec, plan, tasks per feature)
 tests/       unit/, contract/, integration/
 evaluation/  output-quality dataset and checklists
 document_gui.py   backward-compatible entry point
 ```
+
+Spec Kit artifacts (`specs/`, `.specify/`, `.opencode/`) are kept local and are
+not tracked by git.
 
 ## License
 

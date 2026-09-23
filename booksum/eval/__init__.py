@@ -13,14 +13,17 @@ from .dataset import (
     load_dataset,
     validate_dataset,
 )
+from .schema import SCHEMA_PATH, load_schema
 from .scoring import ScoreResult, score_summary
 
 __all__ = [
+    "SCHEMA_PATH",
     "ChecklistItem",
     "EvalDocument",
     "ScoreResult",
     "load_checklist",
     "load_dataset",
+    "load_schema",
     "validate_dataset",
     "score_summary",
 ]

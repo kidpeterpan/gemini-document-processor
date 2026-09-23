@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/booksum/eval-report.schema.json",
+  "title": "EvaluationReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["generated_at", "config", "documents", "aggregate_capture_rate", "passed"],
+  "properties": {
+    "generated_at": { "type": "string", "format": "date-time" },
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model", "prompt_versions", "coverage_threshold"],
+      "properties": {
+        "model": { "type": "string", "minLength": 1 },
+        "prompt_versions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["unit", "synthesis", "coverage"],
+          "properties": {
+            "unit": { "type": "string", "minLength": 1 },
+            "synthesis": { "type": "string", "minLength": 1 },
+            "coverage": { "type": "string", "minLength": 1 }
+          }
+        },
+        "coverage_threshold": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id", "status", "captured", "total", "capture_rate",
+          "missing", "coverage_score", "calls", "prompt_tokens",
+          "output_tokens", "message"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "status": { "enum": ["evaluated", "skipped", "error"] },
+          "captured": { "type": "integer", "minimum": 0 },
+          "total": { "type": "integer", "minimum": 0 },
+          "capture_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+          "missing": { "type": "array", "items": { "type": "string" } },
+          "coverage_score": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+          "calls": { "type": "integer", "minimum": 0 },
+          "prompt_tokens": { "type": "integer", "minimum": 0 },
+          "output_tokens": { "type": "integer", "minimum": 0 },
+          "message": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "aggregate_capture_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+    "passed": { "type": "boolean" }
+  }
+}

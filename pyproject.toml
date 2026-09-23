@@ -32,6 +32,7 @@ packages = ["booksum", "booksum.eval", "web"]
 
 [tool.setuptools.package-data]
 web = ["templates/*.html"]
+"booksum.eval" = ["*.json"]
 
 # --------------------------------------------------------------------------- #
 # Lint / format

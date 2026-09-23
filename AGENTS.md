@@ -16,9 +16,10 @@ python -m pytest          # offline tests + coverage gate (network marked tests 
 
 - `booksum/` — the pure core. **Must never import `flask` or `web`.**
 - `web/` — Flask shell: routes, `JobLogRegistry`, and `web/templates/*.html`.
-- `specs/` — Spec Kit artifacts (constitution, spec, plan, tasks per feature).
 - `tests/` — `unit/`, `contract/`, `integration/`.
 - `evaluation/` — output-quality dataset and checklists.
+- `specs/` — Spec Kit artifacts (spec, plan, tasks per feature). **Local only,
+  gitignored** — do not commit them, and do not make tests depend on them.
 
 ## Hard rules
 
@@ -37,8 +38,11 @@ python -m pytest          # offline tests + coverage gate (network marked tests 
 ## Spec-driven workflow
 
 Feature work follows Spec Kit: `/speckit.constitution` → `.specify` →
-`spec.md` → `plan.md` → `tasks.md` → implement. Conventions live in
-`.specify/memory/constitution.md`.
+`spec.md` → `plan.md` → `tasks.md` → implement. These artifacts and the
+constitution live in `.specify/` and `specs/`, which are **gitignored** (kept
+local, not committed). A published contract that tests depend on must live in
+the package (e.g. `booksum/eval/eval_report.schema.json`), never under
+`specs/`.
 
 ## Environment
 
